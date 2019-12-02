@@ -45,6 +45,11 @@ df$cluster[complete.cases(df %>% select(cluster_variables))] <- clusters$cluster
 
 optional_xaxis <- c(cluster_variables, "TotalVolume", "PercentForceOffs")
 
+
+# read threshold dataframe
+thresholds <- read_csv("threshold_definitions.csv")
+
+
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
@@ -122,6 +127,12 @@ server <- function(input, output) {
         
         pd
     })
+    
+    threshold_lines <- reactive({
+        thresholds %>%
+            filter(variable %in% input$Xvar)
+        
+    })
    
     output$distPlot <- renderPlot({
         
@@ -129,7 +140,13 @@ server <- function(input, output) {
         
         if(input$Xvar == input$Yvar) {
             p <- ggplot(pd, aes(x = x, fill = factor(cluster))) +
-                geom_histogram(aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage")
+                geom_histogram(aes(y = stat(width*density))) + 
+                geom_vline(data = threshold_lines(), 
+                           aes(xintercept = level, color = factor(id)), 
+                           lty = "dashed") +
+                xlab(input$Xvar) + ylab("Percentage") +
+                scale_fill_discrete("Assigned Cluster") + scale_color_discrete("Threshhold") +
+                scale_y_continuous(labels = scales::percent_format())
         } else {
             p <- ggplot(pd, aes(x = x, y = y, color = factor(cluster))) +
                 geom_point() + xlab(input$Xvar) + ylab(input$Yvar) 

@@ -1,0 +1,9 @@
+﻿variable,id,level
+PercentForceOffs,1,0.2
+PercentForceOffs,2,0.5
+PercentForceOffs,3,0.8
+PercentForceOffs,4,0.95
+PercentAOG,1,0.2
+PercentAOG,2,0.4
+PercentAOG,3,0.6
+PercentAOG,4,0.8
