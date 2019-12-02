@@ -43,7 +43,7 @@ clusters <- df %>%
 # the cluster that each element of na.omit(x) belongs to.
 df$cluster[complete.cases(df %>% select(cluster_variables))] <- clusters$cluster
 
-optional_xaxis <- c(cluster_variables, "TotalVolume", "PercentForceOffs")
+optional_xaxis <- c(cluster_variables, "TotalVolume")
 
 
 # read threshold dataframe
