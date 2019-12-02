@@ -1,9 +1,21 @@
-﻿variable,id,level
-PercentForceOffs,1,0.2
-PercentForceOffs,2,0.5
-PercentForceOffs,3,0.8
-PercentForceOffs,4,0.95
-PercentAOG,1,0.2
-PercentAOG,2,0.4
-PercentAOG,3,0.6
-PercentAOG,4,0.8
+variable,	id,	level
+PercentForceOffs, 1, 0.2
+PercentForceOffs, 2,	0.5
+PercentForceOffs,	3,	0.8
+PercentForceOffs,	4,	0.95
+PercentAOG,	1,	0.2
+PercentAOG,	2,	0.4
+PercentAOG,	3,	0.6
+PercentAOG,	4,	0.8
+PlatoonRatio,	1,	0.5
+PlatoonRatio,	2,	0.85
+PlatoonRatio,	3,	1.15
+PlatoonRatio,	4,	1.5
+SFPerCycle,	1,	0.05
+SFPerCycle,	2,	0.2
+SFPerCycle,	3,	0.4
+SFPerCycle,	4,	0.7
+TotalRedLightViolations,	1,	0.5
+TotalRedLightViolations,	2,	1.5
+TotalRedLightViolations,	3,	2.5
+TotalRedLightViolations,	4,	3.5
