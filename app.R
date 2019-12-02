@@ -12,9 +12,23 @@ library(tidyverse)
 library(rsconnect)
 
 # Read corridor dataset
-dfCorridors_NA <- readRDS("dfCorridors_NA.rds") %>%
-    select(BinStartTime, SignalId, ApproachId, TotalVolume, SplitFailures, 
-           PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs)
+
+cluster_variables <- c("SplitFailures", "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs")
+
+# dfCorridors_NA <- readRDS("dfCorridors_NA.rds") %>%
+#     select(BinStartTime, SignalId, ApproachId, TotalVolume, SplitFailures, 
+#            PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs) %>% 
+#     select(cluster_variables) %>%
+#     kmeans(center = 5)
+# scaled_clusters_AMPeak_FtUnion <- complete_dfAMPeak_FtUnion %>%
+#     select(cluster_variables_FtUnion) %>%
+#     mutate_all(scale) %>% # want to scale the data to make it normalized for kmeans
+#     kmeans(centers = clusters_AMPeak_FtUnion$centers %>% scale() )
+# 
+# clustered_dfAMPeak_FtUnion <- complete_dfAMPeak_FtUnion %>%
+#     mutate(cluster = clusters_AMPeak_FtUnion$cluster,
+#            scaled_cluster = scaled_clusters_AMPeak_FtUnion$cluster) %>% 
+#     write_rds("data/clustered_dfAMPeak_FtUnion.rds")
 
 dfCorridors <- readRDS("dfCorridors.rds") 
 
