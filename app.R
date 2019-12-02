@@ -14,12 +14,12 @@ library(rsconnect)
 
 # Setup Cluster variables
 set.seed(3)
-cluster_variables <- c("SplitFailures", "PercentAOG", "PlatoonRatio", 
+cluster_variables <- c("SFPerCycle", "PercentAOG", "PlatoonRatio", 
                        "TotalRedLightViolations", "PercentForceOffs")
 
 # Read corridor dataset
 df <- read_rds("dfCorridors_NA.rds") %>%
-    select(BinStartTime, SignalId, ApproachId, TotalVolume, SplitFailures,
+    select(BinStartTime, SignalId, ApproachId, TotalVolume, SFPerCycle,
            PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs,
            AMPeak, Corrdior) %>%
     # change ridiculous data points to NA
