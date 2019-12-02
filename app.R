@@ -22,6 +22,13 @@ df <- read_rds("dfCorridors_NA.rds") %>%
     select(BinStartTime, SignalId, ApproachId, TotalVolume, SplitFailures,
            PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs,
            AMPeak, Corrdior) %>%
+    # change ridiculous data points to NA
+    mutate(
+        PercentForceOffs = ifelse(PercentForceOffs > 1.3, NA, PercentForceOffs),
+        PlatoonRatio = ifelse(PlatoonRatio > 10, NA, PlatoonRatio)
+    ) %>%
+    
+    # initialize cluster variable
     mutate(cluster = NA)
 
 # get complete data for clustering
