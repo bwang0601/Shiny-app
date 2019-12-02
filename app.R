@@ -90,7 +90,8 @@ ui <- fluidPage(
 
         # Show a plot of the generated distribution
         mainPanel(
-           plotOutput("distPlot")
+           plotOutput("distPlot"),
+           dataTableOutput("dataTable")
         )
     )
 )
@@ -155,6 +156,12 @@ server <- function(input, output) {
         }
 
         p +  theme_bw() 
+    })
+    
+    output$dataTable <- renderDataTable({
+        plotdata() %>%
+            group_by(SignalId) %>%
+            summarise(average = mean(input$Xvar, na.rm = TRUE))
     })
 }
 
