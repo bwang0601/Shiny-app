@@ -16,10 +16,10 @@ library(rsconnect)
 # Setup Cluster variables
 set.seed(3)
 
-cluster_variables <- c("SplitFailures", "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs")
+cluster_variables <- c("SFPerCycle", "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs")
 
 dfCorridors_NA <- readRDS("dfCorridors_NA.rds") %>%
-    select(BinStartTime, SignalId, ApproachId, TotalVolume, SplitFailures,
+    select(BinStartTime, SignalId, ApproachId, TotalVolume, SFPerCycle,
            PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs,
            AMPeak, Corrdior)
 
@@ -41,12 +41,12 @@ clustered_dfCorridors <- complete_dfCorridors %>%
 
 dfCorridors <- left_join(
     dfCorridors_NA, clustered_dfCorridors,
-    by = c("BinStartTime", "SignalId", "ApproachId", "TotalVolume", "SplitFailures", 
+    by = c("BinStartTime", "SignalId", "ApproachId", "TotalVolume", "SFPerCycle", 
            "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs", "AMPeak", "Corrdior")
 ) %>%
     write_rds("dfCorridors.rds")
 
-optional_xaxis <- c("TotalVolume", "SplitFailures", "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs")
+optional_xaxis <- c("TotalVolume", "SFPerCycle", "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs")
 
 select_signalId <- c(unique(dfCorridors$SignalId))
 
@@ -131,10 +131,37 @@ server <- function(input, output) {
         
         pd <- plotdata()
         
-        if(input$Xvar == input$Yvar) {
+        if(input$Xvar == input$Yvar & input$Xvar == "TotalVolume") {
             p <- ggplot(pd, aes(x = x, fill = factor(Cluster))) +
-                geom_histogram(aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage")
-        } else {
+                geom_histogram(aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage") 
+        } 
+        else if(input$Xvar == input$Yvar & input$Xvar == "SFPerCycle") {
+            p <- ggplot(pd, aes(x = x, fill = factor(Cluster))) +
+                geom_histogram(bins = 100, aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage") +
+                geom_vline(xintercept = 0.05) + geom_vline(xintercept = 0.20) + geom_vline(xintercept = 0.40) + geom_vline(xintercept = 0.70)
+        } 
+        else if(input$Xvar == input$Yvar & input$Xvar == "PercentAOG") {
+            p <- ggplot(pd, aes(x = x, fill = factor(Cluster))) +
+                geom_histogram(bins = 100, aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage") +
+                geom_vline(xintercept = 0.2) + geom_vline(xintercept = 0.4) + geom_vline(xintercept = 0.6) + geom_vline(xintercept = 0.8)
+        }
+        else if(input$Xvar == input$Yvar & input$Xvar == "PlatoonRatio") {
+            p <- ggplot(pd, aes(x = x, fill = factor(Cluster))) +
+                geom_histogram(bins = 30, aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage") +
+                geom_vline(xintercept = 0.5) + geom_vline(xintercept = 0.85) + geom_vline(xintercept = 1.15) +
+                geom_vline(xintercept = 1.5)
+        }
+        else if(input$Xvar == input$Yvar & input$Xvar == "TotalRedLightViolations") {
+            p <- ggplot(pd, aes(x = x, fill = factor(Cluster))) +
+                geom_histogram(bins = 100, aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage") +
+                geom_vline(xintercept = 0.5) + geom_vline(xintercept = 1.5) + geom_vline(xintercept = 2.5) + geom_vline(xintercept = 3.5)
+        }
+        else if(input$Xvar == input$Yvar & input$Xvar == "PercentForceOffs") {
+            p <- ggplot(pd, aes(x = x, fill = factor(Cluster))) +
+                geom_histogram(bins =100, aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage") +
+                geom_vline(xintercept = 0.50) + geom_vline(xintercept = 0.80) + geom_vline(xintercept = 0.95) + geom_vline(xintercept = 0.2)
+        }
+        else {
             
             p <- ggplot(pd, aes(x = x, y = y, color = factor(Cluster))) +
                 geom_point() + xlab(input$Xvar) + ylab(input$Yvar) 
