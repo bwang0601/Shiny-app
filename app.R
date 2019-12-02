@@ -13,24 +13,38 @@ library(rsconnect)
 
 # Read corridor dataset
 
+# Setup Cluster variables
+set.seed(3)
+
 cluster_variables <- c("SplitFailures", "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs")
 
-# dfCorridors_NA <- readRDS("dfCorridors_NA.rds") %>%
-#     select(BinStartTime, SignalId, ApproachId, TotalVolume, SplitFailures, 
-#            PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs) %>% 
-#     select(cluster_variables) %>%
-#     kmeans(center = 5)
-# scaled_clusters_AMPeak_FtUnion <- complete_dfAMPeak_FtUnion %>%
-#     select(cluster_variables_FtUnion) %>%
-#     mutate_all(scale) %>% # want to scale the data to make it normalized for kmeans
-#     kmeans(centers = clusters_AMPeak_FtUnion$centers %>% scale() )
-# 
-# clustered_dfAMPeak_FtUnion <- complete_dfAMPeak_FtUnion %>%
-#     mutate(cluster = clusters_AMPeak_FtUnion$cluster,
-#            scaled_cluster = scaled_clusters_AMPeak_FtUnion$cluster) %>% 
-#     write_rds("data/clustered_dfAMPeak_FtUnion.rds")
+dfCorridors_NA <- readRDS("dfCorridors_NA.rds") %>%
+    select(BinStartTime, SignalId, ApproachId, TotalVolume, SplitFailures,
+           PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs,
+           AMPeak, Corrdior)
 
-dfCorridors <- readRDS("dfCorridors.rds") 
+complete_dfCorridors <- na.omit(dfCorridors_NA) %>%
+    filter(!ApproachId %in% c(3169, 3172, 5883, 6007, 6042, 6565))
+
+cluster_dfCorridors <- complete_dfCorridors %>%
+    select(cluster_variables) %>%
+    kmeans(center = 5)
+
+scaled_dfCorridors <- complete_dfCorridors %>%
+    select(cluster_variables) %>%
+    mutate_all(scale) %>% # want to scale the data to make it normalized for kmeans
+    kmeans(centers = cluster_dfCorridors$centers %>% scale())
+
+clustered_dfCorridors <- complete_dfCorridors %>%
+    mutate(cluster = cluster_dfCorridors$cluster,
+           scaled_cluster = scaled_dfCorridors$cluster) 
+
+dfCorridors <- left_join(
+    dfCorridors_NA, clustered_dfCorridors,
+    by = c("BinStartTime", "SignalId", "ApproachId", "TotalVolume", "SplitFailures", 
+           "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs", "AMPeak", "Corrdior")
+) %>%
+    write_rds("dfCorridors.rds")
 
 optional_xaxis <- c("TotalVolume", "SplitFailures", "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs")
 
@@ -119,7 +133,7 @@ server <- function(input, output) {
         
         if(input$Xvar == input$Yvar) {
             p <- ggplot(pd, aes(x = x, fill = factor(Cluster))) +
-                geom_histogram(aes(y = stat(width*density))) + xlab(input$Xvar) 
+                geom_histogram(aes(y = stat(width*density))) + xlab(input$Xvar) + ylab("Percentage")
         } else {
             
             p <- ggplot(pd, aes(x = x, y = y, color = factor(Cluster))) +
