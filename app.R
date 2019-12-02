@@ -9,12 +9,18 @@
 
 library(shiny)
 library(tidyverse)
+library(rsconnect)
 
 # Read corridor dataset
-dfCorridors <- readRDS("~/ATSPM/data/dfCorridors.rds") 
+dfCorridors_NA <- readRDS("dfCorridors_NA.rds") %>%
+    select(BinStartTime, SignalId, ApproachId, TotalVolume, SplitFailures, 
+           PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs)
+
+dfCorridors <- readRDS("dfCorridors.rds") 
 
 optional_xaxis <- c("TotalVolume", "SplitFailures", "PercentAOG", "PlatoonRatio", "TotalRedLightViolations", "PercentForceOffs")
 
+select_signalId <- c(unique(dfCorridors$SignalId))
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -43,6 +49,10 @@ ui <- fluidPage(
                                  "MidDay"),
                                inline = TRUE),
             
+            # Signals filter
+            shiny::selectInput("Intersection", "Select a SignalId", choices = c("All", select_signalId)),
+            
+            # Date range filter
             dateRangeInput("daterange1", "Date range:",
                            start = "2018-03-05",
                            end   = "2018-10-25")
@@ -66,7 +76,8 @@ server <- function(input, output) {
            Cluster = dfCorridors[["scaled_cluster"]],
            Corridor = dfCorridors$Corrdior,
            TOD = ifelse(dfCorridors$AMPeak, "AMPeak", "MidDay"),
-           Date = dfCorridors$BinStartTime
+           Date = dfCorridors$BinStartTime,
+           SignalId = dfCorridors$SignalId
            ) 
         
         if (!is.null(input$Cor)){
@@ -77,6 +88,10 @@ server <- function(input, output) {
           pd <- pd %>% filter(TOD %in% input$tod)
         }
         
+        if (input$Intersection != "All"){
+          pd <- pd %>% filter(SignalId %in% input$Intersection)    
+        }
+        
         if (!is.null(input$daterange1)){
           pd <- pd %>% filter(Date >= input$daterange1[1], Date <= input$daterange1[2])
         }
@@ -85,13 +100,20 @@ server <- function(input, output) {
     })
    
     output$distPlot <- renderPlot({
+        
+        pd <- plotdata()
+        
+        if(input$Xvar == input$Yvar) {
+            p <- ggplot(pd, aes(x = x, fill = factor(Cluster))) +
+                geom_histogram(aes(y = stat(width*density))) + xlab(input$Xvar) 
+        } else {
+            
+            p <- ggplot(pd, aes(x = x, y = y, color = factor(Cluster))) +
+                geom_point() + xlab(input$Xvar) + ylab(input$Yvar) 
+        }
 
-        p <- ggplot(plotdata(), aes(x = x, y = y, color = factor(Cluster))) +
-            geom_point() + xlab(input$Xvar) + ylab(input$Yvar) +
-            facet_grid(TOD~Corridor) +
-            theme_bw()
-       
-        print(p)
+        # p +  facet_grid(TOD~Corridor) +
+          p +  theme_bw() 
     })
 }
 
