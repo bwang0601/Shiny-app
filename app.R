@@ -145,15 +145,16 @@ server <- function(input, output) {
                            aes(xintercept = level, color = factor(id)), 
                            lty = "dashed") +
                 xlab(input$Xvar) + ylab("Percentage") +
-                scale_fill_discrete("Assigned Cluster") + scale_color_discrete("Threshhold") +
+                scale_fill_discrete("Assigned Cluster") + 
+                scale_color_brewer("Threshhold", palette = "Dark2") +
                 scale_y_continuous(labels = scales::percent_format())
         } else {
             p <- ggplot(pd, aes(x = x, y = y, color = factor(cluster))) +
-                geom_point() + xlab(input$Xvar) + ylab(input$Yvar) 
+                geom_point() + xlab(input$Xvar) + ylab(input$Yvar)  +
+                scale_color_discrete("Assigned Cluster")
         }
 
-        # p +  facet_grid(TOD~Corridor) +
-          p +  theme_bw() 
+        p +  theme_bw() 
     })
 }
 
