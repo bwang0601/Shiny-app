@@ -70,12 +70,14 @@ ui <- fluidPage(
             checkboxGroupInput("Cor", "Select a Corridor:",
                                c(unique(as.character(df$Corrdior))), 
                                inline = TRUE),
+            shiny::checkboxInput("cor_facet", label = "Facet corridor?", value = FALSE),
             
             # Time of day filter
             checkboxGroupInput("tod", "Select a Time of Day:",
                                c("AMPeak",
                                  "MidDay"),
                                inline = TRUE),
+            shiny::checkboxInput("tod_facet", label = "Facet time of day?", value = FALSE),
             
             # Signals filter
             shiny::selectInput("Intersection", "Select a SignalId",
@@ -154,6 +156,14 @@ server <- function(input, output) {
                 scale_color_discrete("Assigned Cluster")
         }
 
+        if(input$cor_facet & input$tod_facet) {
+            p <- p + facet_grid(TOD~Corridor)
+        } else if(input$cor_facet) {
+          p <- p + facet_wrap(~Corridor)
+        } else if(input$tod_facet) {
+          p <- p + facet_wrap(~TOD)
+        }
+        
         p +  theme_bw() 
     })
 }
