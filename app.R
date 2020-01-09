@@ -15,16 +15,15 @@ library(rsconnect)
 # Setup Cluster variables
 set.seed(3)
 cluster_variables <- c("SFPerCycle", "PercentAOG", "PlatoonRatio", 
-                       "TotalRedLightViolations", "PercentForceOffs")
+                       "TotalRedLightViolations")
 
 # Read corridor dataset
 df <- read_rds("dfCorridors_NA.rds") %>%
     select(BinStartTime, SignalId, ApproachId, TotalVolume, SFPerCycle,
-           PercentAOG, PlatoonRatio, TotalRedLightViolations, PercentForceOffs,
+           PercentAOG, PlatoonRatio, TotalRedLightViolations,
            AMPeak, Corrdior) %>%
     # change ridiculous data points to NA
     mutate(
-        PercentForceOffs = ifelse(PercentForceOffs > 1.3, NA, PercentForceOffs),
         PlatoonRatio = ifelse(PlatoonRatio > 10, NA, PlatoonRatio)
     ) %>%
     
@@ -92,7 +91,9 @@ ui <- fluidPage(
 
         # Show a plot of the generated distribution
         mainPanel(
-           plotOutput("distPlot")
+           plotOutput("distPlot"),
+           
+           tableOutput("view")
         )
     )
 )
@@ -165,6 +166,10 @@ server <- function(input, output) {
         }
         
         p +  theme_bw() 
+    })
+    
+    output$view <- renderTable({
+       head() 
     })
 }
 
