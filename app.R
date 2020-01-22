@@ -10,6 +10,7 @@
 library(shiny)
 library(tidyverse)
 library(rsconnect)
+library(DT)
 
 
 # Setup Cluster variables
@@ -28,7 +29,54 @@ df <- read_rds("dfCorridors_NA.rds") %>%
     ) %>%
     
     # initialize cluster variable
-    mutate(cluster = NA)
+    mutate(cluster = NA) %>%
+    
+    # PlatoonRatio Score 
+    mutate(
+        PlatoonRatio_Score = case_when(
+            PlatoonRatio < 0.50 ~ "1",
+            PlatoonRatio >= 0.50 & PlatoonRatio < 0.85 ~ "2",
+            PlatoonRatio >= 0.85 & PlatoonRatio < 1.15 ~ "3",
+            PlatoonRatio >= 1.15 & PlatoonRatio < 1.50 ~ "4",
+            PlatoonRatio >= 1.50 ~ "5"
+        )) %>%
+    
+    # SFPerCycle Score 
+    mutate(
+        SFPerCycle_Score = case_when(
+            SFPerCycle < 0.05 ~ "5",
+            SFPerCycle >= 0.05 & SFPerCycle < 0.20 ~ "4",
+            SFPerCycle >= 0.20 & SFPerCycle < 0.40 ~ "3",
+            SFPerCycle >= 0.40 & SFPerCycle < 0.70 ~ "2",
+            SFPerCycle >= 0.70 ~ "1"
+        )) %>%
+    
+    # PercentAOG Score 
+    mutate(
+        PercentAOG_Score = case_when(
+            PercentAOG < 0.20 ~ "1",
+            PercentAOG >= 0.20 & PercentAOG < 0.40 ~ "2",
+            PercentAOG >= 0.40 & PercentAOG < 0.60 ~ "3",
+            PercentAOG >= 0.60 & PercentAOG < 0.80 ~ "4",
+            PercentAOG >= 0.80 ~ "5"
+        )) %>%
+    
+    # TotalRedLightViolations Score 
+    mutate(
+        TotalRedLightViolations_Score = case_when(
+            TotalRedLightViolations < 0.50 ~ "5",
+            TotalRedLightViolations >= 0.50 & TotalRedLightViolations < 1.50 ~ "4",
+            TotalRedLightViolations >= 1.50 & TotalRedLightViolations < 2.50 ~ "3",
+            TotalRedLightViolations >= 2.50 & TotalRedLightViolations < 3.50 ~ "2",
+            TotalRedLightViolations >= 3.50 ~ "1"
+        )) %>%
+    
+    # Weigted Score
+    mutate(
+        Overall_Score = as.numeric(SFPerCycle_Score) * 0.2 + as.numeric(PlatoonRatio_Score) * 0.5 
+        + as.numeric(PercentAOG_Score) * 0.2 + as.numeric(TotalRedLightViolations_Score) * 0.1 
+    )
+    
 
 # get complete data for clustering
 clusters <- df %>%
@@ -85,31 +133,42 @@ ui <- fluidPage(
             # Date range filter
             dateRangeInput("daterange1", "Date range:",
                            start = "2018-03-05",
-                           end   = "2018-10-25")
-
+                           end   = "2018-10-25"),
+            
+            # actionButton("update", "Update View")
+            
         ),
 
         # Show a plot of the generated distribution
         mainPanel(
            plotOutput("distPlot"),
-           
-           tableOutput("view")
+           # wellPanel(
+           #     span("Score of Day",
+           #          textOutput("table"))
+           # )
         )
-    )
+    ),
+    
+    DT::dataTableOutput("table")
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
     plotdata <- reactive({
-        pd <- tibble(
+        pd <- tibble(            
+            SignalId = df$SignalId,
+            Date = df$BinStartTime,
             x = df[[input$Xvar]],
             y = df[[input$Yvar]],
+            PRScore = df$PlatoonRatio_Score,
+            SFScore = df$SFPerCycle_Score,
+            AOGScore = df$PercentAOG_Score,
+            RLScore = df$TotalRedLightViolations_Score,
+            OverAll = df$Overall_Score,
             cluster = df[["cluster"]],
             Corridor = df$Corrdior,
-            TOD = ifelse(df$AMPeak, "AMPeak", "MidDay"),
-            Date = df$BinStartTime,
-            SignalId = df$SignalId
+            TOD = ifelse(df$AMPeak, "AMPeak", "MidDay")
         ) 
         
         if (!is.null(input$Cor)){
@@ -168,9 +227,20 @@ server <- function(input, output) {
         p +  theme_bw() 
     })
     
-    output$view <- renderTable({
-       head() 
-    })
+    # datasetInput <- eventReactive(input$update, {
+    #     switch(input$Xvar,
+    #            "optional_xaxis" = optional_xaxis)
+    # })
+    # 
+    # output$view <- renderTable({
+    #     head(datasetInput())
+    # })
+    
+    output$table <- DT::renderDataTable(DT::datatable({
+        data <- plotdata() %>% select(-x, -y, -Corridor, -TOD)
+        
+        data
+    }))
 }
 
 # Run the application 
