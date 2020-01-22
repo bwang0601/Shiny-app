@@ -12,10 +12,10 @@ PlatoonRatio,	2,	0.85
 PlatoonRatio,	3,	1.15
 PlatoonRatio,	4,	1.5
 SFPerCycle,	1,	0.05
-SFPerCycle,	2,	0.2
-SFPerCycle,	3,	0.4
-SFPerCycle,	4,	0.7
-TotalRedLightViolations,	1,	0.5
-TotalRedLightViolations,	2,	1.5
-TotalRedLightViolations,	3,	2.5
-TotalRedLightViolations,	4,	3.5
+SFPerCycle,	2,	0.3
+SFPerCycle,	3,	0.5
+SFPerCycle,	4,	0.95
+TotalRedLightViolations,	1,	1
+TotalRedLightViolations,	2,	3
+TotalRedLightViolations,	3,	4
+TotalRedLightViolations,	4,	6
