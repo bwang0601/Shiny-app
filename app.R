@@ -69,13 +69,7 @@ df <- read_rds("dfCorridors_NA.rds") %>%
             TotalRedLightViolations >= 1.50 & TotalRedLightViolations < 2.50 ~ "3",
             TotalRedLightViolations >= 2.50 & TotalRedLightViolations < 3.50 ~ "2",
             TotalRedLightViolations >= 3.50 ~ "1"
-        )) %>%
-    
-    # Weigted Score
-    mutate(
-        Overall_Score = as.numeric(SFPerCycle_Score) * 0.2 + as.numeric(PlatoonRatio_Score) * 0.5 
-        + as.numeric(PercentAOG_Score) * 0.2 + as.numeric(TotalRedLightViolations_Score) * 0.1 
-    )
+        ))
     
 
 # get complete data for clustering
@@ -134,9 +128,11 @@ ui <- fluidPage(
             dateRangeInput("daterange1", "Date range:",
                            start = "2018-03-05",
                            end   = "2018-10-25"),
-            
-            # actionButton("update", "Update View")
-            
+
+            ## TODO: Add other weights
+            h3("Weights for Intersection Scoring"),
+            shiny::sliderInput("sfweight", "Split Fail", min = 0, max = 1, step = 0.1, value = 0.5)            
+
         ),
 
         # Show a plot of the generated distribution
@@ -165,7 +161,6 @@ server <- function(input, output) {
             SFScore = df$SFPerCycle_Score,
             AOGScore = df$PercentAOG_Score,
             RLScore = df$TotalRedLightViolations_Score,
-            OverAll = df$Overall_Score,
             cluster = df[["cluster"]],
             Corridor = df$Corrdior,
             TOD = ifelse(df$AMPeak, "AMPeak", "MidDay")
@@ -237,8 +232,13 @@ server <- function(input, output) {
     # })
     
     output$table <- DT::renderDataTable(DT::datatable({
-        data <- plotdata() %>% select(-x, -y, -Corridor, -TOD)
+        data <- plotdata() %>%
+            select(-x, -y, -Corridor, -TOD) %>%
+            mutate(
+                Overall = as.numeric(SFScore) * input$sfweight
+            )
         
+    
         data
     }))
 }
