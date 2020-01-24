@@ -51,6 +51,24 @@ optional_xaxis <- c(cluster_variables, "TotalVolume")
 thresholds <- read_csv("threshold_definitions.csv")
 
 
+# Convert the thresholds into a list that can be sorted and compared against
+th_grouped <- thresholds %>%
+    group_by(variable) %>% nest()
+th_list <- lapply(th_grouped$data, function(x) {
+    l <- c(x$level)
+    names(l) <- x$id
+    l
+})
+names(th_list) <- th_grouped$variable
+
+# Create a function to find the threshold cutoff directly beneath the value
+my_lookup <- function(x, v){
+    # check value, find last bigger
+    r <- names(rev(v[x > v])[1])
+    if(is.na(r)) 0 else as.numeric(r)
+}
+
+
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
@@ -101,19 +119,17 @@ ui <- fluidPage(
         # Show a plot of the generated distribution
         mainPanel(
            plotOutput("distPlot"),
-           # wellPanel(
-           #     span("Score of Day",
-           #          textOutput("table"))
-           # )
+           DT::dataTableOutput("table")
         )
-    ),
+    )
     
-    DT::dataTableOutput("table")
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
+    # This reactive object constructs an analysis dataset from the
+    # user-specified time periods
     plotdata <- reactive({
         pd <- tibble(            
             SignalId = df$SignalId,
@@ -148,12 +164,14 @@ server <- function(input, output) {
         pd
     })
     
+    # This reactive object returns the threshold lines only for the selected
+    # X variable.
     threshold_lines <- reactive({
-        thresholds %>%
-            filter(variable %in% input$Xvar)
-        
+        thresholds %>% filter(variable %in% input$Xvar)
     })
    
+    # This output plot is either an X-Y scatter plot (if using two different measures)
+    # or a histogram (if X and Y are the same)
     output$distPlot <- renderPlot({
         
         pd <- plotdata()
@@ -185,34 +203,10 @@ server <- function(input, output) {
         p +  theme_bw() 
     })
     
-    # datasetInput <- eventReactive(input$update, {
-    #     switch(input$Xvar,
-    #            "optional_xaxis" = optional_xaxis)
-    # })
-    # 
-    # output$view <- renderTable({
-    #     head(datasetInput())
-    # })
-    
+    # This is a table of all the time periods for which we have data in the 
+    # view.
     output$table <- DT::renderDataTable(DT::datatable({
-        
-        # get a set of lookup lists for the threshold values
-        th_grouped <- thresholds %>%
-            group_by(variable) %>% nest()
-        th_list <- lapply(th_grouped$data, function(x) {
-            l <- c(x$level)
-            names(l) <- x$id
-            l
-        })
-        names(th_list) <- th_grouped$variable
-            
-        # Create a function to find the threshold cutoff directly beneath the value
-        my_lookup <- function(x, v){
-            # check value, find last bigger
-            r <- names(rev(v[x > v])[1])
-            if(is.na(r)) 0 else as.numeric(r)
-        }
-        
+
         data <- plotdata() %>%
             
             # lookup threshold score values
