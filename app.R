@@ -210,16 +210,17 @@ server <- function(input, output) {
         my_lookup <- function(x, v){
             # check value, find last bigger
             r <- names(rev(v[x > v])[1])
-            if(is.na(r)) NA else r
+            if(is.na(r)) 0 else as.numeric(r)
         }
         
-        data <- plotdata()  %>%
+        data <- plotdata() %>%
+            
             # lookup threshold score values
             mutate(
-                pr_score  = map_chr(pr, my_lookup,  v = th_list$PlatoonRatio),
-                sf_score  = map_chr(sf, my_lookup,  v = th_list$SFPerCycle),
-                aog_score = map_chr(aog, my_lookup, v = th_list$PercentAOG),
-                rl_score  = map_chr(rl, my_lookup,  v = th_list$TotalRedLightViolations)
+                pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
+                sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
+                aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
+                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations)
             ) %>%
             
             # Calculate overall score
