@@ -29,47 +29,7 @@ df <- read_rds("dfCorridors_NA.rds") %>%
     ) %>%
     
     # initialize cluster variable
-    mutate(cluster = NA) %>%
-    
-    # PlatoonRatio Score 
-    mutate(
-        PlatoonRatio_Score = case_when(
-            PlatoonRatio < 0.50 ~ "1",
-            PlatoonRatio >= 0.50 & PlatoonRatio < 0.85 ~ "2",
-            PlatoonRatio >= 0.85 & PlatoonRatio < 1.15 ~ "3",
-            PlatoonRatio >= 1.15 & PlatoonRatio < 1.50 ~ "4",
-            PlatoonRatio >= 1.50 ~ "5"
-        )) %>%
-    
-    # SFPerCycle Score 
-    mutate(
-        SFPerCycle_Score = case_when(
-            SFPerCycle < 0.05 ~ "5",
-            SFPerCycle >= 0.05 & SFPerCycle < 0.20 ~ "4",
-            SFPerCycle >= 0.20 & SFPerCycle < 0.40 ~ "3",
-            SFPerCycle >= 0.40 & SFPerCycle < 0.70 ~ "2",
-            SFPerCycle >= 0.70 ~ "1"
-        )) %>%
-    
-    # PercentAOG Score 
-    mutate(
-        PercentAOG_Score = case_when(
-            PercentAOG < 0.20 ~ "1",
-            PercentAOG >= 0.20 & PercentAOG < 0.40 ~ "2",
-            PercentAOG >= 0.40 & PercentAOG < 0.60 ~ "3",
-            PercentAOG >= 0.60 & PercentAOG < 0.80 ~ "4",
-            PercentAOG >= 0.80 ~ "5"
-        )) %>%
-    
-    # TotalRedLightViolations Score 
-    mutate(
-        TotalRedLightViolations_Score = case_when(
-            TotalRedLightViolations < 0.50 ~ "5",
-            TotalRedLightViolations >= 0.50 & TotalRedLightViolations < 1.50 ~ "4",
-            TotalRedLightViolations >= 1.50 & TotalRedLightViolations < 2.50 ~ "3",
-            TotalRedLightViolations >= 2.50 & TotalRedLightViolations < 3.50 ~ "2",
-            TotalRedLightViolations >= 3.50 ~ "1"
-        ))
+    mutate(cluster = NA) 
     
 
 # get complete data for clustering
@@ -160,10 +120,10 @@ server <- function(input, output) {
             Date = df$BinStartTime,
             x = df[[input$Xvar]],
             y = df[[input$Yvar]],
-            PRScore = df$PlatoonRatio_Score,
-            SFScore = df$SFPerCycle_Score,
-            AOGScore = df$PercentAOG_Score,
-            RLScore = df$TotalRedLightViolations_Score,
+            pr = df$PlatoonRatio,
+            sf = df$SFPerCycle,
+            aog = df$PercentAOG,
+            rl = df$TotalRedLightViolations,
             cluster = df[["cluster"]],
             Corridor = df$Corrdior,
             TOD = ifelse(df$AMPeak, "AMPeak", "MidDay")
@@ -235,14 +195,57 @@ server <- function(input, output) {
     # })
     
     output$table <- DT::renderDataTable(DT::datatable({
+        
         data <- plotdata() %>%
             select(-x, -y, -Corridor, -TOD) %>%
+            # lookup threshold score values
             mutate(
-                Overall = as.numeric(SFScore) * input$sfweight +
-                          as.numeric(PRScore) * input$prweight +
-                          as.numeric(AOGScore) * input$aogweight +
-                          as.numeric(RLScore) * input$rlweight 
+                pr_score = case_when(
+                    pr < 0.50 ~ 1,
+                    pr >= 0.50 & pr < 0.85 ~ 2,
+                    pr >= 0.85 & pr < 1.15 ~ 3,
+                    pr >= 1.15 & pr < 1.50 ~ 4,
+                    pr >= 1.50 ~ 5
+                )) %>%
+            
+            # SFPerCycle Score 
+            mutate(
+                sf_score = case_when(
+                    sf < 0.05 ~ 5,
+                    sf >= 0.05 & sf < 0.20 ~ 4,
+                    sf >= 0.20 & sf < 0.40 ~ 3,
+                    sf >= 0.40 & sf < 0.70 ~ 2,
+                    sf >= 0.70 ~ 1
+                )) %>%
+            
+            # PercentAOG Score 
+            mutate(
+                aog_score = case_when(
+                    aog < 0.20 ~ 1,
+                    aog >= 0.20 & aog < 0.40 ~ 2,
+                    aog >= 0.40 & aog < 0.60 ~ 3,
+                    aog >= 0.60 & aog < 0.80 ~ 4,
+                    aog >= 0.80 ~ 5
+                )) %>%
+            
+            # TotalRedLightViolations Score 
+            mutate(
+                rl_score = case_when(
+                    rl < 0.50 ~ 5,
+                    rl >= 0.50 & rl < 1.50 ~ 4,
+                    rl >= 1.50 & rl < 2.50 ~ 3,
+                    rl >= 2.50 & rl < 3.50 ~ 2,
+                    rl >= 3.50 ~ 1
+                )) %>%
+            
+            # Calculate overall score
+            mutate(
+                Overall = sf_score  * input$sfweight +
+                          pr_score  * input$prweight +
+                          aog_score * input$aogweight +
+                          rl_score  * input$rlweight 
             )
+        
         
     
         data
