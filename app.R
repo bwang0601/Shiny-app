@@ -196,47 +196,31 @@ server <- function(input, output) {
     
     output$table <- DT::renderDataTable(DT::datatable({
         
-        data <- plotdata() %>%
-            select(-x, -y, -Corridor, -TOD) %>%
+        # get a set of lookup lists for the threshold values
+        th_grouped <- thresholds %>%
+            group_by(variable) %>% nest()
+        th_list <- lapply(th_grouped$data, function(x) {
+            l <- c(x$level)
+            names(l) <- x$id
+            l
+        })
+        names(th_list) <- th_grouped$variable
+            
+        # Create a function to find the threshold cutoff directly beneath the value
+        my_lookup <- function(x, v){
+            # check value, find last bigger
+            r <- names(rev(v[x > v])[1])
+            if(is.na(r)) NA else r
+        }
+        
+        data <- plotdata()  %>%
             # lookup threshold score values
             mutate(
-                pr_score = case_when(
-                    pr < 0.50 ~ 1,
-                    pr >= 0.50 & pr < 0.85 ~ 2,
-                    pr >= 0.85 & pr < 1.15 ~ 3,
-                    pr >= 1.15 & pr < 1.50 ~ 4,
-                    pr >= 1.50 ~ 5
-                )) %>%
-            
-            # SFPerCycle Score 
-            mutate(
-                sf_score = case_when(
-                    sf < 0.05 ~ 5,
-                    sf >= 0.05 & sf < 0.20 ~ 4,
-                    sf >= 0.20 & sf < 0.40 ~ 3,
-                    sf >= 0.40 & sf < 0.70 ~ 2,
-                    sf >= 0.70 ~ 1
-                )) %>%
-            
-            # PercentAOG Score 
-            mutate(
-                aog_score = case_when(
-                    aog < 0.20 ~ 1,
-                    aog >= 0.20 & aog < 0.40 ~ 2,
-                    aog >= 0.40 & aog < 0.60 ~ 3,
-                    aog >= 0.60 & aog < 0.80 ~ 4,
-                    aog >= 0.80 ~ 5
-                )) %>%
-            
-            # TotalRedLightViolations Score 
-            mutate(
-                rl_score = case_when(
-                    rl < 0.50 ~ 5,
-                    rl >= 0.50 & rl < 1.50 ~ 4,
-                    rl >= 1.50 & rl < 2.50 ~ 3,
-                    rl >= 2.50 & rl < 3.50 ~ 2,
-                    rl >= 3.50 ~ 1
-                )) %>%
+                pr_score  = map_chr(pr, my_lookup,  v = th_list$PlatoonRatio),
+                sf_score  = map_chr(sf, my_lookup,  v = th_list$SFPerCycle),
+                aog_score = map_chr(aog, my_lookup, v = th_list$PercentAOG),
+                rl_score  = map_chr(rl, my_lookup,  v = th_list$TotalRedLightViolations)
+            ) %>%
             
             # Calculate overall score
             mutate(
