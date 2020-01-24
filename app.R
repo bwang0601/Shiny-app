@@ -130,8 +130,11 @@ ui <- fluidPage(
                            end   = "2018-10-25"),
 
             ## TODO: Add other weights
-            h3("Weights for Intersection Scoring"),
-            shiny::sliderInput("sfweight", "Split Fail", min = 0, max = 1, step = 0.1, value = 0.5)            
+            h4("Weights for Intersection Scoring"),
+            shiny::sliderInput("sfweight", "Split Fail", min = 0, max = 1, step = 0.1, value = 0.2),
+            shiny::sliderInput("prweight", "Platoon Ratio", min = 0, max = 1, step = 0.1, value = 0.2),
+            shiny::sliderInput("aogweight", "Percent AOG", min = 0, max = 1, step = 0.1, value = 0.5),
+            shiny::sliderInput("rlweight", "Red Light Violation", min = 0, max = 1, step = 0.1, value = 0.1)
 
         ),
 
@@ -235,7 +238,10 @@ server <- function(input, output) {
         data <- plotdata() %>%
             select(-x, -y, -Corridor, -TOD) %>%
             mutate(
-                Overall = as.numeric(SFScore) * input$sfweight
+                Overall = as.numeric(SFScore) * input$sfweight +
+                          as.numeric(PRScore) * input$prweight +
+                          as.numeric(AOGScore) * input$aogweight +
+                          as.numeric(RLScore) * input$rlweight 
             )
         
     
