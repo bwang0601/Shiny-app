@@ -234,14 +234,17 @@ server <- function(input, output) {
     #     head(datasetInput())
     # })
     
+    
     output$table <- DT::renderDataTable(DT::datatable({
+        wts <- c(input$sfweight, input$prweight, input$aogweight, input$rlweight) %>% wts = wts/sum(wts)
+
         data <- plotdata() %>%
             select(-x, -y, -Corridor, -TOD) %>%
             mutate(
-                Overall = as.numeric(SFScore) * input$sfweight +
-                          as.numeric(PRScore) * input$prweight +
-                          as.numeric(AOGScore) * input$aogweight +
-                          as.numeric(RLScore) * input$rlweight 
+                Overall = as.numeric(SFScore) * wts(1) +
+                          as.numeric(PRScore) * wts(2) +
+                          as.numeric(AOGScore) * wts(3) +
+                          as.numeric(RLScore) * wts(4) 
             )
         
     
