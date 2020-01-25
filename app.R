@@ -29,47 +29,7 @@ df <- read_rds("dfCorridors_NA.rds") %>%
     ) %>%
     
     # initialize cluster variable
-    mutate(cluster = NA) %>%
-    
-    # PlatoonRatio Score 
-    mutate(
-        PlatoonRatio_Score = case_when(
-            PlatoonRatio < 0.50 ~ "1",
-            PlatoonRatio >= 0.50 & PlatoonRatio < 0.85 ~ "2",
-            PlatoonRatio >= 0.85 & PlatoonRatio < 1.15 ~ "3",
-            PlatoonRatio >= 1.15 & PlatoonRatio < 1.50 ~ "4",
-            PlatoonRatio >= 1.50 ~ "5"
-        )) %>%
-    
-    # SFPerCycle Score 
-    mutate(
-        SFPerCycle_Score = case_when(
-            SFPerCycle < 0.05 ~ "5",
-            SFPerCycle >= 0.05 & SFPerCycle < 0.20 ~ "4",
-            SFPerCycle >= 0.20 & SFPerCycle < 0.40 ~ "3",
-            SFPerCycle >= 0.40 & SFPerCycle < 0.70 ~ "2",
-            SFPerCycle >= 0.70 ~ "1"
-        )) %>%
-    
-    # PercentAOG Score 
-    mutate(
-        PercentAOG_Score = case_when(
-            PercentAOG < 0.20 ~ "1",
-            PercentAOG >= 0.20 & PercentAOG < 0.40 ~ "2",
-            PercentAOG >= 0.40 & PercentAOG < 0.60 ~ "3",
-            PercentAOG >= 0.60 & PercentAOG < 0.80 ~ "4",
-            PercentAOG >= 0.80 ~ "5"
-        )) %>%
-    
-    # TotalRedLightViolations Score 
-    mutate(
-        TotalRedLightViolations_Score = case_when(
-            TotalRedLightViolations < 0.50 ~ "5",
-            TotalRedLightViolations >= 0.50 & TotalRedLightViolations < 1.50 ~ "4",
-            TotalRedLightViolations >= 1.50 & TotalRedLightViolations < 2.50 ~ "3",
-            TotalRedLightViolations >= 2.50 & TotalRedLightViolations < 3.50 ~ "2",
-            TotalRedLightViolations >= 3.50 ~ "1"
-        ))
+    mutate(cluster = NA) 
     
 
 # get complete data for clustering
@@ -89,6 +49,24 @@ optional_xaxis <- c(cluster_variables, "TotalVolume")
 
 # read threshold dataframe
 thresholds <- read_csv("threshold_definitions.csv")
+
+
+# Convert the thresholds into a list that can be sorted and compared against
+th_grouped <- thresholds %>%
+    group_by(variable) %>% nest()
+th_list <- lapply(th_grouped$data, function(x) {
+    l <- c(x$level)
+    names(l) <- x$id
+    l
+})
+names(th_list) <- th_grouped$variable
+
+# Create a function to find the threshold cutoff directly beneath the value
+my_lookup <- function(x, v){
+    # check value, find last bigger
+    r <- names(rev(v[x > v])[1])
+    if(is.na(r)) 0 else as.numeric(r)
+}
 
 
 # Define UI for application that draws a histogram
@@ -141,29 +119,27 @@ ui <- fluidPage(
         # Show a plot of the generated distribution
         mainPanel(
            plotOutput("distPlot"),
-           # wellPanel(
-           #     span("Score of Day",
-           #          textOutput("table"))
-           # )
+           DT::dataTableOutput("table")
         )
-    ),
+    )
     
-    DT::dataTableOutput("table")
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
     
+    # This reactive object constructs an analysis dataset from the
+    # user-specified time periods
     plotdata <- reactive({
         pd <- tibble(            
             SignalId = df$SignalId,
             Date = df$BinStartTime,
             x = df[[input$Xvar]],
             y = df[[input$Yvar]],
-            PRScore = df$PlatoonRatio_Score,
-            SFScore = df$SFPerCycle_Score,
-            AOGScore = df$PercentAOG_Score,
-            RLScore = df$TotalRedLightViolations_Score,
+            pr = df$PlatoonRatio,
+            sf = df$SFPerCycle,
+            aog = df$PercentAOG,
+            rl = df$TotalRedLightViolations,
             cluster = df[["cluster"]],
             Corridor = df$Corrdior,
             TOD = ifelse(df$AMPeak, "AMPeak", "MidDay")
@@ -188,12 +164,14 @@ server <- function(input, output) {
         pd
     })
     
+    # This reactive object returns the threshold lines only for the selected
+    # X variable.
     threshold_lines <- reactive({
-        thresholds %>%
-            filter(variable %in% input$Xvar)
-        
+        thresholds %>% filter(variable %in% input$Xvar)
     })
    
+    # This output plot is either an X-Y scatter plot (if using two different measures)
+    # or a histogram (if X and Y are the same)
     output$distPlot <- renderPlot({
         
         pd <- plotdata()
@@ -225,24 +203,28 @@ server <- function(input, output) {
         p +  theme_bw() 
     })
     
-    # datasetInput <- eventReactive(input$update, {
-    #     switch(input$Xvar,
-    #            "optional_xaxis" = optional_xaxis)
-    # })
-    # 
-    # output$view <- renderTable({
-    #     head(datasetInput())
-    # })
-    
+    # This is a table of all the time periods for which we have data in the 
+    # view.
     output$table <- DT::renderDataTable(DT::datatable({
+
         data <- plotdata() %>%
-            select(-x, -y, -Corridor, -TOD) %>%
+            
+            # lookup threshold score values
             mutate(
-                Overall = as.numeric(SFScore) * input$sfweight +
-                          as.numeric(PRScore) * input$prweight +
-                          as.numeric(AOGScore) * input$aogweight +
-                          as.numeric(RLScore) * input$rlweight 
+                pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
+                sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
+                aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
+                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations)
+            ) %>%
+            
+            # Calculate overall score
+            mutate(
+                Overall = sf_score  * input$sfweight +
+                          pr_score  * input$prweight +
+                          aog_score * input$aogweight +
+                          rl_score  * input$rlweight 
             )
+        
         
     
         data
