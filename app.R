@@ -206,6 +206,21 @@ server <- function(input, output) {
     # This is a table of all the time periods for which we have data in the 
     # view.
     output$table <- DT::renderDataTable(DT::datatable({
+        
+        # collect weights from input sliders
+        wts <- c(
+            input$prweight,
+            input$sfweight,
+            input$aogweight,
+            input$rlweight
+        )
+        names(wts) <- c("pr", "sf", "aog", "rl")
+        
+        # scale weights to sum to 1
+        wts <- wts / sum(wts)
+        
+        
+        
 
         data <- plotdata() %>%
             
@@ -219,10 +234,8 @@ server <- function(input, output) {
             
             # Calculate overall score
             mutate(
-                Overall = sf_score  * input$sfweight +
-                          pr_score  * input$prweight +
-                          aog_score * input$aogweight +
-                          rl_score  * input$rlweight 
+                Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
+                    aog_score * wts["aog"] + rl_score  * wts["rl"]
             )
         
         
