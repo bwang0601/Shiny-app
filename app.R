@@ -119,7 +119,8 @@ ui <- fluidPage(
         # Show a plot of the generated distribution
         mainPanel(
            plotOutput("distPlot"),
-           DT::dataTableOutput("table")
+           DT::dataTableOutput("table"),
+           verbatimTextOutput("summary")
         )
     )
     
@@ -236,12 +237,18 @@ server <- function(input, output) {
             mutate(
                 Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
                     aog_score * wts["aog"] + rl_score  * wts["rl"]
-            )
+            ) %>%
+            
+            select(-x, -y, TOD)
         
         
-    
         data
     }))
+    
+    output$summary <- renderPrint({
+        dataset <- data()
+        summary(dataset)
+    })
 }
 
 # Run the application 
