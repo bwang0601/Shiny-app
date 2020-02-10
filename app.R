@@ -120,7 +120,9 @@ ui <- fluidPage(
         mainPanel(
            plotOutput("distPlot"),
            DT::dataTableOutput("table"),
-           verbatimTextOutput("summary")
+           verbatimTextOutput("summary"),
+           plotOutput("boxPlot"),
+           
         )
     )
     
@@ -219,11 +221,8 @@ server <- function(input, output) {
         
         # scale weights to sum to 1
         wts <- wts / sum(wts)
-        
-        
-        
 
-        data <- plotdata() %>%
+        dt <- plotdata() %>%
             
             # lookup threshold score values
             mutate(
@@ -242,12 +241,82 @@ server <- function(input, output) {
             select(-x, -y, TOD)
         
         
-        data
+        dt
     }))
     
     output$summary <- renderPrint({
-        dataset <- data()
-        summary(dataset)
+        
+        wts <- c(
+            input$prweight,
+            input$sfweight,
+            input$aogweight,
+            input$rlweight
+        )
+        names(wts) <- c("pr", "sf", "aog", "rl")
+        
+        # scale weights to sum to 1
+        wts <- wts / sum(wts)
+        
+        sum <- plotdata() %>%
+            mutate(
+                pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
+                sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
+                aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
+                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations)
+            ) %>%
+            
+            # Calculate overall score
+            mutate(
+                Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
+                    aog_score * wts["aog"] + rl_score  * wts["rl"]
+            ) %>%
+            
+            select(-x, -y, TOD) %>%
+            
+            summary() 
+            
+        sum
+    })
+    
+    output$boxPlot <- renderPlot({
+        
+        wts <- c(
+            input$prweight,
+            input$sfweight,
+            input$aogweight,
+            input$rlweight
+        )
+        names(wts) <- c("pr", "sf", "aog", "rl")
+        
+        # scale weights to sum to 1
+        wts <- wts / sum(wts)
+        
+        bp <- plotdata() %>%
+            mutate(
+                pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
+                sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
+                aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
+                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations)
+            ) %>%
+            
+            # Calculate overall score
+            mutate(
+                Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
+                    aog_score * wts["aog"] + rl_score  * wts["rl"]
+            ) %>%
+            
+            select(-x, -y, TOD) %>%
+            
+            ggplot(aes(x = factor(0), y = Overall)) +
+            geom_boxplot() +
+            stat_summary(fun.y = "mean",
+                         geom = "point",
+                         shape = 18,
+                         size = 1.5,
+                         color = "red") +
+            coord_flip()
+        
+        bp
     })
 }
 
