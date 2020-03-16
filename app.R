@@ -65,7 +65,7 @@ names(th_list) <- th_grouped$variable
 my_lookup <- function(x, v){
     # check value, find last bigger
     r <- names(rev(v[x > v])[1])
-    if(is.na(r)) 0 else as.numeric(r)
+    if(is.na(r)) NA else as.numeric(r)
 }
 
 
@@ -109,11 +109,13 @@ ui <- fluidPage(
 
             ## TODO: Add other weights
             h4("Weights for Intersection Scoring"),
+            shiny::sliderInput("prweight", "Platoon Ratio", min = 0, max = 1, step = 0.1, value = 0.4),
             shiny::sliderInput("sfweight", "Split Fail", min = 0, max = 1, step = 0.1, value = 0.2),
-            shiny::sliderInput("prweight", "Platoon Ratio", min = 0, max = 1, step = 0.1, value = 0.2),
-            shiny::sliderInput("aogweight", "Percent AOG", min = 0, max = 1, step = 0.1, value = 0.5),
-            shiny::sliderInput("rlweight", "Red Light Violation", min = 0, max = 1, step = 0.1, value = 0.1)
-
+            shiny::sliderInput("aogweight", "Percent AOG", min = 0, max = 1, step = 0.1, value = 0.2),
+            shiny::sliderInput("rlweight", "Red Light Violation", min = 0, max = 1, step = 0.1, value = 0.2),
+            
+            # Download Button
+            downloadButton("downloadData", "Download")
         ),
 
         # Show a plot of the generated distribution
@@ -229,16 +231,23 @@ server <- function(input, output) {
                 pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
                 sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
                 aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
-                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations)
+                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations),
+                pr_weight = wts["pr"],
+                sf_weight = wts["sf"],
+                aog_weight = wts["aog"],
+                rl_weight = wts["rl"]
             ) %>%
+            
+            group_by_all() %>%
             
             # Calculate overall score
             mutate(
-                Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
-                    aog_score * wts["aog"] + rl_score  * wts["rl"]
+                # Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
+                #     aog_score * wts["aog"] + rl_score  * wts["rl"]
+                Overall = weighted.mean(c(pr_score, sf_score, aog_score, rl_score), c(pr_weight, sf_weight, aog_weight, rl_weight), na.rm = TRUE)
             ) %>%
             
-            select(-x, -y, TOD)
+            select(-x, -y)
         
         
         dt
@@ -262,13 +271,20 @@ server <- function(input, output) {
                 pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
                 sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
                 aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
-                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations)
+                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations),
+                pr_weight = wts["pr"],
+                sf_weight = wts["sf"],
+                aog_weight = wts["aog"],
+                rl_weight = wts["rl"]
             ) %>%
+            
+            group_by_all() %>%
             
             # Calculate overall score
             mutate(
-                Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
-                    aog_score * wts["aog"] + rl_score  * wts["rl"]
+                # Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
+                #     aog_score * wts["aog"] + rl_score  * wts["rl"]
+                Overall = weighted.mean(c(pr_score, sf_score, aog_score, rl_score), c(pr_weight, sf_weight, aog_weight, rl_weight), na.rm = TRUE)
             ) %>%
             
             select(-x, -y, TOD) %>%
@@ -296,28 +312,45 @@ server <- function(input, output) {
                 pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
                 sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
                 aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
-                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations)
+                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations),
+                pr_weight = wts["pr"],
+                sf_weight = wts["sf"],
+                aog_weight = wts["aog"],
+                rl_weight = wts["rl"]
             ) %>%
+            
+            group_by_all() %>%
             
             # Calculate overall score
             mutate(
-                Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
-                    aog_score * wts["aog"] + rl_score  * wts["rl"]
+                # Overall = sf_score  * wts["sf"] +  pr_score  * wts["pr"] +
+                #     aog_score * wts["aog"] + rl_score  * wts["rl"]
+                Overall = weighted.mean(c(pr_score, sf_score, aog_score, rl_score), c(pr_weight, sf_weight, aog_weight, rl_weight), na.rm = TRUE)
             ) %>%
             
             select(-x, -y, TOD) %>%
             
-            ggplot(aes(x = factor(0), y = Overall)) +
-            geom_boxplot() +
-            stat_summary(fun.y = "mean",
-                         geom = "point",
-                         shape = 18,
-                         size = 1.5,
-                         color = "red") +
-            coord_flip()
+            ggplot(aes(x = Overall, colour = SignalId)) +
+            stat_ecdf() +
+            # geom_point() +
+            # stat_summary(fun.y = "mean",
+            #              geom = "point",
+            #              shape = 18,
+            #              size = 1.5,
+            #              color = "red") +
+            facet_wrap(~TOD) 
         
         bp
     })
+    
+    output$downloadData <- downloadHandler(
+        filename = function() {
+            paste(output$table, ".csv", sep = "")
+        },
+        content = function(file) {
+            write_csv(output$table(), file)
+        }
+    )
 }
 
 # Run the application 
