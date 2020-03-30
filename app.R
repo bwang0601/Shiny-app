@@ -174,6 +174,21 @@ server <- function(input, output) {
     threshold_lines <- reactive({
         thresholds %>% filter(variable %in% input$Xvar)
     })
+    
+    # This reactive the thresheld_data function
+    threshheld_data <- reactive({
+        plotdata() %>%
+            # look up threshold score values
+            mutate(
+                pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
+                sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
+                aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
+                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations),
+                pr_weight = wts["pr"],
+                sf_weight = wts["sf"],
+                aog_weight = wts["aog"],
+                rl_weight = wts["rl"])
+    })
    
     # This output plot is either an X-Y scatter plot (if using two different measures)
     # or a histogram (if X and Y are the same)
@@ -224,19 +239,7 @@ server <- function(input, output) {
         # scale weights to sum to 1
         wts <- wts / sum(wts)
 
-        dt <- plotdata() %>%
-            
-            # lookup threshold score values
-            mutate(
-                pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
-                sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
-                aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
-                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations),
-                pr_weight = wts["pr"],
-                sf_weight = wts["sf"],
-                aog_weight = wts["aog"],
-                rl_weight = wts["rl"]
-            ) %>%
+        dt <- threshheld_data() %>%
             
             group_by_all() %>%
             
@@ -266,17 +269,7 @@ server <- function(input, output) {
         # scale weights to sum to 1
         wts <- wts / sum(wts)
         
-        sum <- plotdata() %>%
-            mutate(
-                pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
-                sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
-                aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
-                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations),
-                pr_weight = wts["pr"],
-                sf_weight = wts["sf"],
-                aog_weight = wts["aog"],
-                rl_weight = wts["rl"]
-            ) %>%
+        sum <- threshheld_data %>%
             
             group_by_all() %>%
             
@@ -307,17 +300,7 @@ server <- function(input, output) {
         # scale weights to sum to 1
         wts <- wts / sum(wts)
         
-        bp <- plotdata() %>%
-            mutate(
-                pr_score  = map_dbl(pr, my_lookup,  v = th_list$PlatoonRatio),
-                sf_score  = map_dbl(sf, my_lookup,  v = th_list$SFPerCycle),
-                aog_score = map_dbl(aog, my_lookup, v = th_list$PercentAOG),
-                rl_score  = map_dbl(rl, my_lookup,  v = th_list$TotalRedLightViolations),
-                pr_weight = wts["pr"],
-                sf_weight = wts["sf"],
-                aog_weight = wts["aog"],
-                rl_weight = wts["rl"]
-            ) %>%
+        bp <- threshheld_data %>%
             
             group_by_all() %>%
             
@@ -330,7 +313,8 @@ server <- function(input, output) {
             
             select(-x, -y, TOD) %>%
             
-            ggplot(aes(x = Overall, colour = SignalId)) +
+            ggplot(bp %>% mutate(SignalId = factor(SignalId)),
+                aes(x = Overall,group = SignalId, colour = SignalId)) +
             stat_ecdf() +
             # geom_point() +
             # stat_summary(fun.y = "mean",
